@@ -1,12 +1,13 @@
 const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
-const { Resend } = require('resend');
+const sgMail = require('@sendgrid/mail');
 require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
-const resend = new Resend(process.env.RESEND_API_KEY);
+
+sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
 /* -------------------- Middleware -------------------- */
 
@@ -42,7 +43,9 @@ app.post('/api/contact', async (req, res) => {
     const adminTemplate = `
     <div style="font-family: Arial, sans-serif; padding:20px;">
       <h2 style="color:#333;">📩 New Contact Form Submission</h2>
+
       <p>A new message has been submitted through your website contact form.</p>
+
       <table style="border-collapse: collapse; width:100%; margin-top:15px;">
         <tr>
           <td style="padding:10px; border:1px solid #ddd;"><strong>Name</strong></td>
@@ -57,6 +60,7 @@ app.post('/api/contact', async (req, res) => {
           <td style="padding:10px; border:1px solid #ddd;">${message}</td>
         </tr>
       </table>
+
       <p style="margin-top:20px; color:#777;">
         This email was automatically generated from your website contact form.
       </p>
@@ -67,18 +71,24 @@ app.post('/api/contact', async (req, res) => {
     const userTemplate = `
     <div style="font-family: Arial, sans-serif; padding:20px;">
       <h2 style="color:#4CAF50;">Thank You for Contacting Me!</h2>
+
       <p>Hello <strong>${name}</strong>,</p>
+
       <p>
         I have successfully received your message. I will review it and
         respond as soon as possible.
       </p>
+
       <h3>Your Message</h3>
+
       <div style="background:#f5f5f5; padding:15px; border-radius:5px;">
         ${message}
       </div>
+
       <p style="margin-top:20px;">
         If your request is urgent, please feel free to reply to this email.
       </p>
+
       <p style="margin-top:25px;">
         Best Regards,<br/>
         <strong>Abhinav Sunil</strong>
@@ -86,11 +96,11 @@ app.post('/api/contact', async (req, res) => {
     </div>
     `;
 
-    /* -------------------- Send Emails via Resend -------------------- */
+    /* -------------------- Send Emails via SendGrid -------------------- */
     console.log('Sending admin email...');
-    await resend.emails.send({
-      from: 'onboarding@resend.dev', // ← free Resend sender (no domain needed)
-      to: process.env.EMAIL_USER, // ← your Gmail receives it
+    await sgMail.send({
+      from: process.env.EMAIL_USER, // your verified sender email
+      to: process.env.EMAIL_USER, // you receive it
       replyTo: email,
       subject: `New Contact Message from ${name}`,
       html: adminTemplate,
@@ -98,9 +108,9 @@ app.post('/api/contact', async (req, res) => {
     console.log('Admin email sent');
 
     console.log('Sending user confirmation email...');
-    await resend.emails.send({
-      from: 'onboarding@resend.dev', // ← free Resend sender
-      to: email,
+    await sgMail.send({
+      from: process.env.EMAIL_USER, // your verified sender email
+      to: email, // visitor receives it
       subject: 'I received your message ✔',
       html: userTemplate,
     });
@@ -111,7 +121,8 @@ app.post('/api/contact', async (req, res) => {
       message: 'Message sent successfully',
     });
   } catch (error) {
-    console.error('Email Error:', error);
+    console.error('Email Error:', error.response?.body || error);
+
     return res.status(500).json({
       error: 'Failed to send message',
     });
