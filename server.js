@@ -43,7 +43,9 @@ app.post('/api/contact', async (req, res) => {
         error: 'All fields are required',
       });
     }
-
+    console.log('Verifying transporter...');
+    await transporter.verify();
+    console.log('Transporter verified OK');
     /* -------------------- Admin Email Template -------------------- */
 
     const adminTemplate = `
