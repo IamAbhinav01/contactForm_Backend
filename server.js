@@ -11,7 +11,7 @@ const PORT = process.env.PORT || 5000;
 
 app.use(
   cors({
-    origin: 'https://portfolio-frontend-ig3p.onrender.com',
+    origin: 'https://iamabhinav.onrender.com',
   })
 );
 app.use(bodyParser.json());
