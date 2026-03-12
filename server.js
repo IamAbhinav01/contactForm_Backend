@@ -1,13 +1,12 @@
 const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
-const sgMail = require('@sendgrid/mail');
+const { Resend } = require('resend');
 require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
-
-sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 /* -------------------- Middleware -------------------- */
 
@@ -67,62 +66,29 @@ app.post('/api/contact', async (req, res) => {
     </div>
     `;
 
-    /* -------------------- User Confirmation Template -------------------- */
-    const userTemplate = `
-    <div style="font-family: Arial, sans-serif; padding:20px;">
-      <h2 style="color:#4CAF50;">Thank You for Contacting Me!</h2>
-
-      <p>Hello <strong>${name}</strong>,</p>
-
-      <p>
-        I have successfully received your message. I will review it and
-        respond as soon as possible.
-      </p>
-
-      <h3>Your Message</h3>
-
-      <div style="background:#f5f5f5; padding:15px; border-radius:5px;">
-        ${message}
-      </div>
-
-      <p style="margin-top:20px;">
-        If your request is urgent, please feel free to reply to this email.
-      </p>
-
-      <p style="margin-top:25px;">
-        Best Regards,<br/>
-        <strong>Abhinav Sunil</strong>
-      </p>
-    </div>
-    `;
-
-    /* -------------------- Send Emails via SendGrid -------------------- */
+    /* -------------------- Send Admin Email via Resend -------------------- */
     console.log('Sending admin email...');
-    await sgMail.send({
-      from: process.env.EMAIL_USER, // your verified sender email
-      to: process.env.EMAIL_USER, // you receive it
+    const { error } = await resend.emails.send({
+      from: 'onboarding@resend.dev', // Resend free sender
+      to: process.env.RESEND_TO_EMAIL, // must be your Resend signup email
       replyTo: email,
       subject: `New Contact Message from ${name}`,
       html: adminTemplate,
     });
-    console.log('Admin email sent');
 
-    console.log('Sending user confirmation email...');
-    await sgMail.send({
-      from: process.env.EMAIL_USER, // your verified sender email
-      to: email, // visitor receives it
-      subject: 'I received your message ✔',
-      html: userTemplate,
-    });
-    console.log('User confirmation email sent');
+    if (error) {
+      console.error('Resend error:', error);
+      return res.status(500).json({ error: 'Failed to send message' });
+    }
+
+    console.log('Admin email sent successfully');
 
     return res.status(200).json({
       success: true,
       message: 'Message sent successfully',
     });
   } catch (error) {
-    console.error('Email Error:', error.response?.body || error);
-
+    console.error('Email Error:', error);
     return res.status(500).json({
       error: 'Failed to send message',
     });
